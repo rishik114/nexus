@@ -29,7 +29,6 @@ nexus-build/
    - `Project URL`
    - `anon public` key
    - `service_role` key (keep secret — backend only)
-   - `JWT Secret` (under Settings → API → JWT Settings)
 
 ## 2. Run the backend (FastAPI)
 
@@ -58,7 +57,7 @@ Visit `http://localhost:3000`.
 
 - The frontend uses `@supabase/ssr` to sign up / log in directly against Supabase Auth (industry-standard, handles password hashing, sessions, refresh tokens for you).
 - Every API request from the frontend attaches the Supabase session JWT as `Authorization: Bearer <token>`.
-- FastAPI verifies that JWT against your project's JWT secret (`app/core/deps.py`) and extracts the user ID — no separate auth system to maintain.
+- FastAPI verifies that token with Supabase Auth (`app/core/deps.py`) and extracts the user ID — no separate auth system to maintain.
 - The backend uses the Supabase **service role** key to talk to the database, so it can enforce its own authorization logic (e.g. "only the post owner can delete it") on top of the database's Row Level Security.
 
 ## How real-time collaboration works

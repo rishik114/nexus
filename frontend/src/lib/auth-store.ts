@@ -10,7 +10,7 @@ interface AuthState {
   loading: boolean;
   init: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, username: string, displayName: string) => Promise<void>;
+  signup: (email: string, password: string, username: string, displayName: string) => Promise<{ needsEmailConfirmation: boolean }>;
   logout: () => Promise<void>;
 }
 
@@ -23,7 +23,7 @@ export const useAuth = create<AuthState>((set) => ({
     const { data } = await supabase.auth.getSession();
     if (data.session) {
       try {
-        const profile = await api.me();
+        const profile = await api.me(data.session.access_token);
         set({ profile: profile as Profile, loading: false });
       } catch {
         set({ profile: null, loading: false });
@@ -35,7 +35,7 @@ export const useAuth = create<AuthState>((set) => ({
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
         try {
-          const profile = await api.me();
+          const profile = await api.me(session.access_token);
           set({ profile: profile as Profile });
         } catch {
           set({ profile: null });
@@ -48,27 +48,35 @@ export const useAuth = create<AuthState>((set) => ({
 
   login: async (email, password) => {
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    const profile = await api.me();
+    const profile = await api.me(data.session?.access_token);
     set({ profile: profile as Profile });
   },
 
   signup: async (email, password, username, displayName) => {
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const res = (await api.signup({
       email,
       password,
-      options: { data: { username, display_name: displayName } },
-    });
-    if (error) throw error;
-    // Supabase may require email confirmation depending on project settings;
-    // if a session comes back immediately, fetch the profile.
-    const { data } = await supabase.auth.getSession();
-    if (data.session) {
-      const profile = await api.me();
+      username,
+      display_name: displayName,
+    })) as {
+      session: { access_token?: string; refresh_token?: string } | null;
+      profile: Profile | null;
+    };
+
+    if (res.session?.access_token && res.session?.refresh_token) {
+      await supabase.auth.setSession({
+        access_token: res.session.access_token,
+        refresh_token: res.session.refresh_token,
+      });
+      const profile = res.profile ?? (await api.me(res.session.access_token));
       set({ profile: profile as Profile });
+      return { needsEmailConfirmation: false };
     }
+
+    return { needsEmailConfirmation: true };
   },
 
   logout: async () => {

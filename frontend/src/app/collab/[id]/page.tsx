@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Type, ImageIcon, Pencil, Smile, Sparkles, Send } from "lucide-react";
+import { Type, ImageIcon, Pencil, Smile, Send } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { useCollabRealtime } from "@/lib/useCollabRealtime";
@@ -24,23 +24,24 @@ export default function CollabPage() {
       : { id: "anon", username: "anon", avatar_emoji: "👤" }
   );
 
+  const { setLayers, setComments, broadcastCursor } = rt;
+
   useEffect(() => {
     api.getCollabSession(id).then((s) => {
       const sess = s as CollabSession;
       setSession(sess);
-      rt.setLayers(sess.layers);
-      rt.setComments(sess.comments);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      setLayers(sess.layers);
+      setComments(sess.comments);
     });
-  }, [id]);
+  }, [id, setLayers, setComments]);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       if (!canvasRef.current) return;
       const rect = canvasRef.current.getBoundingClientRect();
-      rt.broadcastCursor(e.clientX - rect.left, e.clientY - rect.top);
+      broadcastCursor(e.clientX - rect.left, e.clientY - rect.top);
     },
-    [rt]
+    [broadcastCursor]
   );
 
   async function addTextLayer() {

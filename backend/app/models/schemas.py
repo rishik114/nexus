@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, Literal
 from datetime import datetime
 from uuid import UUID
@@ -10,6 +10,14 @@ class SignUpRequest(BaseModel):
     password: str = Field(min_length=8)
     username: str = Field(min_length=3, max_length=30)
     display_name: Optional[str] = None
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if not normalized.replace("_", "").isalnum():
+            raise ValueError("Username can only contain letters, numbers, and underscores")
+        return normalized
 
 
 class LoginRequest(BaseModel):

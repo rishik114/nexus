@@ -2,21 +2,26 @@ import { createClient } from "./supabase";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-async function authHeader(): Promise<Record<string, string>> {
+async function authHeader(token?: string): Promise<Record<string, string>> {
+  if (token) return { Authorization: `Bearer ${token}` };
+
   const supabase = createClient();
   const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const sessionToken = data.session?.access_token;
+  return sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = await authHeader();
+type ApiRequestInit = RequestInit & { authToken?: string };
+
+async function request<T>(path: string, options: ApiRequestInit = {}): Promise<T> {
+  const { authToken, ...fetchOptions } = options;
+  const headers = await authHeader(authToken);
   const res = await fetch(`${API_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers: {
       "Content-Type": "application/json",
       ...headers,
-      ...(options.headers || {}),
+      ...(fetchOptions.headers || {}),
     },
   });
 
@@ -35,7 +40,7 @@ export const api = {
     request("/api/auth/signup", { method: "POST", body: JSON.stringify(body) }),
   login: (body: { email: string; password: string }) =>
     request("/api/auth/login", { method: "POST", body: JSON.stringify(body) }),
-  me: () => request("/api/auth/me"),
+  me: (authToken?: string) => request("/api/auth/me", { authToken }),
 
   // Users
   searchUsers: (q: string) => request(`/api/users/search?q=${encodeURIComponent(q)}`),

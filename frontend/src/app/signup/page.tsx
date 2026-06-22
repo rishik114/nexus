@@ -21,7 +21,11 @@ export default function SignupPage() {
     setError("");
     setBusy(true);
     try {
-      await signup(email, password, username, displayName || username);
+      const result = await signup(email, password, username, displayName || username);
+      if (result.needsEmailConfirmation) {
+        setNeedsConfirm(true);
+        return;
+      }
       router.push("/");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Sign up failed";
@@ -64,8 +68,10 @@ export default function SignupPage() {
             <input
               required
               minLength={3}
+              maxLength={30}
+              pattern="[a-z0-9_]+"
               value={username}
-              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, "_"))}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, "_").replace(/[^a-z0-9_]/g, ""))}
               className="w-full bg-bg3 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent/40"
             />
           </div>
